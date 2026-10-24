@@ -5,7 +5,7 @@ on:
     branches: ["main", "master"]
   pull_request:
     branches: ["main", "master"]
-  workflow_dispatch: # Permite que você ative manualmente pelo botão se precisar
+  workflow_dispatch:
 
 jobs:
   security-gate:
@@ -14,62 +14,66 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Instalação limpa e oficial do Conftest via repositório Debian do GitHub
+      # 1. Instalação estável do Conftest via binário oficial
       - name: Setup Conftest
         run: |
-          LATEST=$(curl -s https://api.github.com/repos/open-policy-agent/conftest/releases/latest | grep tag_name | cut -d '"' -f 4 | sed 's/v//')
-          wget -q "https://github.com/open-policy-agent/conftest/releases/download/v${LATEST}/conftest_${LATEST}_Linux_x86_64.tar.gz"
-          tar -xzf "conftest_${LATEST}_Linux_x86_64.tar.gz" conftest
+          echo "=== Instanciando Conftest ==="
+          curl -sLO https://github.com
+          tar -xzf conftest_0.56.0_Linux_x86_64.tar.gz conftest
           sudo mv conftest /usr/local/bin/
           conftest --version
 
-      # Execução de testes unitários de todas as políticas do repositório (.rego)
+      # Execução de testes de unidade das suas políticas locais (.rego)
       - name: Run Unit Tests for Rego Policies
         run: |
-          conftest verify --policy policies/docker/ || echo "Sem testes locais ou políticas inconsistentes"
-          conftest verify --policy policies/sbom/ || echo "Sem testes locais ou políticas inconsistentes"
+          echo "=== Executando Testes Unitários ==="
+          conftest verify --policy policies/docker/ || echo "Políticas de infraestrutura ausentes"
+          conftest verify --policy policies/sbom/ || echo "Políticas de SBOM ausentes"
 
-      # GATE 1: Análise estática do Dockerfile contra as políticas de infraestrutura
+      # GATE 1: Análise estática do Dockerfile.secure contra as políticas
       - name: Validate Dockerfile Security
         run: |
-          if [ -f Dockerfile ]; then
+          echo "=== [LABORATÓRIO] Analisando Dockerfile Seguro ==="
+          if [ -f Dockerfile.secure ]; then
             conftest test Dockerfile.secure --policy policies/docker/
           else
-            echo "Dockerfile.secure não encontrado na raiz. Pulando validação."
+            echo "ERRO: Arquivo 'Dockerfile.secure' não foi encontrado na raiz!"
+            exit 1
           fi
 
-      # PASSO INTERMEDIÁRIO: Instalação do Syft usando a URL oficial e correta
+      # 2. Instalação limpa e direta do Syft (URL corrigida e protegida)
       - name: Install Syft
         run: |
+          echo "=== Instanciando Syft ==="
           curl -sSfL https://githubusercontent.com | sh -s -- -b /usr/local/bin
+          syft --version
 
       # PASSO 2.1: Geração do SBOM via Syft
       - name: Generate Project SBOM via Syft
         run: |
           syft dir:. -o json=sbom.json
 
-      # GATE 2: Validação de conformidade estrutural e de licenças do SBOM gerado
+      # GATE 2: Validação de conformidade estrutural do SBOM gerado
       - name: Validate SBOM Compliance Fields
         run: |
           conftest test sbom.json --policy policies/sbom/ --namespace sbom_policy
 
-      # PASSO 2.2: Instalação do Trivy Vulnerability Scanner usando repositório oficial
+      # 3. Instalação rápida do Trivy usando script direto do fabricante (Evita quebras de APT/GPG)
       - name: Install Trivy
         run: |
-          sudo apt-get update -y && sudo apt-get install -y wget apt-transport-https gnupg lsb-release
-          wget -qO - https://github.io | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
-          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://github.io $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.min.d/trivy.list
-          sudo apt-get update -y && sudo apt-get install -y trivy
+          echo "=== Instanciando Trivy ==="
+          curl -sfL https://githubusercontent.com | sh -s -- -b /usr/local/bin v0.55.2
+          trivy --version
 
-      # PASSO 2.3: Escaneamento de vulnerabilidades diretamente no SBOM gerado pelo Syft
+      # PASSO 2.3: Escaneamento de vulnerabilidades diretamente no SBOM gerado
       - name: Scan SBOM for Real Vulnerabilities via Trivy
         continue-on-error: true
         run: |
           trivy sbom sbom.json --format table --severity HIGH,CRITICAL
 
-      # Publicação da evidência - O inventário SBOM validado é anexado como artefato da esteira
+      # Publicação da evidência como artefato de download para o seu curso
       - name: Archive Compliance SBOM Artifact
-        if: always() # Modificado para 'always' para garantir que você baixe as evidências mesmo se houver falhas anteriores
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: compliant-project-sbom
