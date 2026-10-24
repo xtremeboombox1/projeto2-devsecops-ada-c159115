@@ -44,3 +44,6 @@ Checklist binário de 5 itens, sem rubrica de 0–100:
  - [ ] Encontrou e registrou 1 vulnerabilidade real. 
  - [ ] Assinou/verificou com Cosign. 
  - [ ] Conectou o exercício com um caso real de ataque à cadeia de suprimentos.
+
+# Desenvolvimento
+Criação de uma aplicação base (api python com flask depreciado)
