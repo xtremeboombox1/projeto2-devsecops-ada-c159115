@@ -53,4 +53,10 @@ Após a criação da imagem podemos rodar a mesma pelo comando `docker run -d -p
 - Criação de regras policy com script security.rego e testes com security_test.rego validando imagem com usuário não root e testes para evitar imagem com a tag 'latest', criação de um novo Dockerfile.secure respeitando as regras disponibilizadas por security.rego
 ![alt text](image.png)
 - Criação da pipeline com implementação inicial até fase 2 Inventário
-
+- Teste inicial da pipeline com Dockerfile inseguro - evidência de falha ao usar imagem com usuário ROOT
+![alt text](image-1.png)
+e na pipeline:
+![alt text](image-2.png)
+evidencia da aplicação da policy .rego:
+![alt text](image-3.png)
+- modificação no devsecops.yml para analisar as implementações de Dockerfile
