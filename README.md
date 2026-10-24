@@ -52,4 +52,5 @@ Após a criação da imagem podemos rodar a mesma pelo comando `docker run -d -p
 - Criação de testes iniciais da aplicação insegura com relatórios sbom.json feito com o comando na raíz do projeto `syft dir:. -o json > sbom.json` e trivy-config-report.json pelo comando `trivy config Dockerfile --format json --output trivy-config-report.json` .Ao ler a saída do trivy sabe-se que a aplicação têm problemas
 - Criação de regras policy com script security.rego e testes com security_test.rego validando imagem com usuário não root e testes para evitar imagem com a tag 'latest', criação de um novo Dockerfile.secure respeitando as regras disponibilizadas por security.rego
 ![alt text](image.png)
+- Criação da pipeline com implementação inicial até fase 2 Inventário
 

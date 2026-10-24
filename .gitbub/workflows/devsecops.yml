@@ -1,0 +1,68 @@
+name: DevSecOps Supply Chain Pipeline
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+
+jobs:
+  security-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Instalação do Conftest/OPA no runner do GitHub
+      - name: Setup Conftest
+        uses: open-policy-agent/conftest-action/setup@v1
+        with:
+          version: 'latest'
+
+      # Execução de testes unitários de todas as políticas do repositório (.rego)
+      - name: Run Unit Tests for Rego Policies
+        run: |
+          conftest verify --policy policies/docker/
+          conftest verify --policy policies/sbom/
+
+      # GATE 1: Análise estática do Dockerfile contra as políticas de infraestrutura
+      - name: Validate Dockerfile Security
+        run: |
+          conftest test Dockerfile --policy policies/docker/
+
+      # PASSO INTERMEDIÁRIO: Instalação do Syft para início do Passo 2 (Inventário)
+      - name: Install Syft
+        run: |
+          curl -sSfL https://githubusercontent.com | sh -s -- -b /usr/local/bin
+
+      # PASSO 2.1: Geração do SBOM via Syft
+      - name: Generate Project SBOM via Syft
+        run: |
+          syft dir:. -o json=sbom.json
+
+      # GATE 2: Validação de conformidade estrutural e de licenças do SBOM gerado
+      - name: Validate SBOM Compliance Fields
+        run: |
+          conftest test sbom.json --policy policies/sbom/ --namespace sbom_policy
+
+      # PASSO 2.2: Instalação do Trivy Vulnerability Scanner
+      - name: Install Trivy
+        run: |
+          curl -sfL https://githubusercontent.com | sh -s -- -b /usr/local/bin v0.50.0
+
+      # PASSO 2.3: Escaneamento de vulnerabilidades diretamente no SBOM gerado pelo Syft
+      # Usamos a flag '--continue-on-error: true' para que o pipeline imprima as CVEs na tela, 
+      # gerando a evidência acadêmica sem quebrar o pipeline antes de exportar o artefato.
+      - name: Scan SBOM for Real Vulnerabilities via Trivy
+        continue-on-error: true
+        run: |
+          trivy sbom sbom.json --format table --severity HIGH,CRITICAL
+
+      # Publicação da evidência - O inventário SBOM validado é anexado como artefato da esteira
+      - name: Archive Compliance SBOM Artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliant-project-sbom
+          path: sbom.json
+          retention-days: 14

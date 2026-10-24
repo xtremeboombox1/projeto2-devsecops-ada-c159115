@@ -1,5 +1,4 @@
 # 1. Uso de imagem base genérica e tag flutuante (Gera alertas de segurança)
-# Adaptado para usar a sua versão do Python (3.14)
 FROM python:3.14
 
 WORKDIR /app
