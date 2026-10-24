@@ -32,7 +32,7 @@ jobs:
       # GATE 1: Análise estática do Dockerfile contra as políticas de infraestrutura
       - name: Validate Dockerfile.secure Security
         run: |
-          if [ -f Dockerfile ]; then
+          if [ -f Dockerfile.secure ]; then
             conftest test Dockerfile.secure --policy policies/docker/
           else
             echo "Dockerfile.secure não encontrado na raiz. Pulando validação."
