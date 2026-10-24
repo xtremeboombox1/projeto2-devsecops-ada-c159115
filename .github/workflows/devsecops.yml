@@ -14,23 +14,30 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Instalação estável do Conftest via binário oficial
+      # 1. Instalação do Conftest via binário oficial
       - name: Setup Conftest
         run: |
           echo "=== Instanciando Conftest ==="
-          curl -sLO https://github.com
-          tar -xzf conftest_0.56.0_Linux_x86_64.tar.gz conftest
+          CONFTEST_VERSION=0.56.0
+          curl -sSfLO "https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz"
+          tar -xzf "conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz" conftest
           sudo mv conftest /usr/local/bin/
+          rm -f "conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz"
           conftest --version
 
-      # Execução de testes de unidade das suas políticas locais (.rego)
+      # Testes de unidade das políticas locais (.rego)
       - name: Run Unit Tests for Rego Policies
         run: |
           echo "=== Executando Testes Unitários ==="
-          conftest verify --policy policies/docker/ || echo "Políticas de infraestrutura ausentes"
-          conftest verify --policy policies/sbom/ || echo "Políticas de SBOM ausentes"
+          for dir in policies/docker policies/sbom; do
+            if [ -d "$dir" ]; then
+              conftest verify --policy "$dir"
+            else
+              echo "AVISO: diretório $dir ausente, pulando"
+            fi
+          done
 
-      # GATE 1: Análise estática do Dockerfile.secure contra as políticas
+      # GATE 1: Análise estática do Dockerfile.secure
       - name: Validate Dockerfile Security
         run: |
           echo "=== [LABORATÓRIO] Analisando Dockerfile Seguro ==="
@@ -41,37 +48,37 @@ jobs:
             exit 1
           fi
 
-      # 2. Instalação limpa e direta do Syft (URL corrigida e protegida)
+      # 2. Instalação do Syft
       - name: Install Syft
         run: |
           echo "=== Instanciando Syft ==="
-          curl -sSfL https://githubusercontent.com | sh -s -- -b /usr/local/bin
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sudo sh -s -- -b /usr/local/bin
           syft --version
 
-      # PASSO 2.1: Geração do SBOM via Syft
+      # PASSO 2.1: Geração do SBOM
       - name: Generate Project SBOM via Syft
         run: |
           syft dir:. -o json=sbom.json
 
-      # GATE 2: Validação de conformidade estrutural do SBOM gerado
+      # GATE 2: Conformidade estrutural do SBOM
       - name: Validate SBOM Compliance Fields
         run: |
           conftest test sbom.json --policy policies/sbom/ --namespace sbom_policy
 
-      # 3. Instalação rápida do Trivy usando script direto do fabricante (Evita quebras de APT/GPG)
+      # 3. Instalação do Trivy
       - name: Install Trivy
         run: |
           echo "=== Instanciando Trivy ==="
-          curl -sfL https://githubusercontent.com | sh -s -- -b /usr/local/bin v0.55.2
+          curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.55.2
           trivy --version
 
-      # PASSO 2.3: Escaneamento de vulnerabilidades diretamente no SBOM gerado
+      # PASSO 2.3: Escaneamento de vulnerabilidades no SBOM
       - name: Scan SBOM for Real Vulnerabilities via Trivy
         continue-on-error: true
         run: |
           trivy sbom sbom.json --format table --severity HIGH,CRITICAL
 
-      # Publicação da evidência como artefato de download para o seu curso
+      # Publicação da evidência como artefato
       - name: Archive Compliance SBOM Artifact
         if: always()
         uses: actions/upload-artifact@v4
