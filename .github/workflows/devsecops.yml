@@ -30,12 +30,12 @@ jobs:
           conftest verify --policy policies/sbom/ || echo "Sem testes locais ou políticas inconsistentes"
 
       # GATE 1: Análise estática do Dockerfile contra as políticas de infraestrutura
-      - name: Validate Dockerfile Security
+      - name: Validate Dockerfile.secure Security
         run: |
           if [ -f Dockerfile ]; then
-            conftest test Dockerfile --policy policies/docker/
+            conftest test Dockerfile.secure --policy policies/docker/
           else
-            echo "Dockerfile não encontrado na raiz. Pulando validação."
+            echo "Dockerfile.secure não encontrado na raiz. Pulando validação."
           fi
 
       # PASSO INTERMEDIÁRIO: Instalação do Syft usando a URL oficial e correta
