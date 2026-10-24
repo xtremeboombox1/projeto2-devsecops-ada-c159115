@@ -14,12 +14,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Instalação do Conftest usando repositório APT oficial do Ubuntu/Debian
+      # 1. Instalação Direta e Limpa do Conftest (Sem chaves GPG complicadas)
       - name: Setup Conftest (Native)
         run: |
           echo "=== Instalando Conftest Nativo ==="
-          wget -qO - https://github.io | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
-          # O conftest estático está sendo montado diretamente via download direto estável sem falha de string
           curl -sLO https://github.com
           tar -xzf conftest_0.56.0_Linux_x86_64.tar.gz conftest
           sudo mv conftest /usr/local/bin/
@@ -43,7 +41,7 @@ jobs:
             exit 1
           fi
 
-      # 2. Instalação nativa do Syft direto do repositório oficial do fabricante
+      # 2. Instalação nativa do Syft direto do repositório oficial
       - name: Install Syft (Native)
         run: |
           echo "=== Instalando Syft Nativo ==="
@@ -59,14 +57,11 @@ jobs:
         run: |
           conftest test sbom.json --policy policies/sbom/ --namespace sbom_policy
 
-      # 3. Instalação nativa do Trivy usando o gerenciador de pacotes oficial (APT)
-      - name: Install Trivy (Native APT)
+      # 3. Instalação nativa do Trivy usando script oficial limpo (Evita problemas de APT/GPG)
+      - name: Install Trivy (Native)
         run: |
-          echo "=== Instalando Trivy via APT ==="
-          sudo apt-get update -y && sudo apt-get install -y wget apt-transport-https gnupg lsb-release
-          wget -qO - https://github.io | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
-          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://github.io $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update -y && sudo apt-get install -y trivy
+          echo "=== Instalando Trivy via Script Oficial ==="
+          curl -sfL https://githubusercontent.com | sh -s -- -b /usr/local/bin v0.55.2
           trivy --version
 
       # PASSO 2.3: Escaneamento de vulnerabilidades diretamente no SBOM gerado pelo Syft
