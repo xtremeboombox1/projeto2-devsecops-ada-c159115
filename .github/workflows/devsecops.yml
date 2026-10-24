@@ -15,7 +15,7 @@ jobs:
 
       # Instalação do Conftest/OPA no runner do GitHub
       - name: Setup Conftest
-        uses: open-policy-agent/conftest-action/setup@v1
+        uses: open-policy-agent/setup-conftest@v1
         with:
           version: 'latest'
 
