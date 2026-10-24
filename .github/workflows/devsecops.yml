@@ -14,37 +14,39 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Instalação limpa e direta do Conftest
-      - name: Setup Conftest
+      # 1. Instalação do Conftest usando repositório APT oficial do Ubuntu/Debian
+      - name: Setup Conftest (Native)
         run: |
-          echo "=== Instalando Conftest ==="
+          echo "=== Instalando Conftest Nativo ==="
+          wget -qO - https://github.io | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          # O conftest estático está sendo montado diretamente via download direto estável sem falha de string
           curl -sLO https://github.com
           tar -xzf conftest_0.56.0_Linux_x86_64.tar.gz conftest
           sudo mv conftest /usr/local/bin/
           conftest --version
 
-      # Execução dos testes de unidade das políticas (.rego)
+      # Execução dos testes de unidade das suas políticas locais (.rego)
       - name: Run Unit Tests for Rego Policies
         run: |
           echo "=== Executando Testes Unitários ==="
           conftest verify --policy policies/docker/
           conftest verify --policy policies/sbom/
 
-      # GATE 1: Análise estática focada APENAS no Dockerfile Seguro (Deve passar!)
+      # GATE 1: Análise estática focada exclusivamente no Dockerfile Seguro
       - name: Validate Secure Dockerfile
         run: |
           echo "=== [LABORATÓRIO] Analisando Dockerfile.secure Corrigido ==="
           if [ -f Dockerfile.secure ]; then
             conftest test Dockerfile.secure --policy policies/docker/
           else
-            echo "ERRO CRÍTICO: O arquivo 'Dockerfile.secure' não foi encontrado na raiz do repositório!"
+            echo "ERRO CRÍTICO: O arquivo 'Dockerfile.secure' não foi encontrado na raiz!"
             exit 1
           fi
 
-      # PASSO INTERMEDIÁRIO: Instalação do Syft
-      - name: Install Syft
+      # 2. Instalação nativa do Syft direto do repositório oficial do fabricante
+      - name: Install Syft (Native)
         run: |
-          echo "=== Instalando Syft ==="
+          echo "=== Instalando Syft Nativo ==="
           curl -sSfL https://githubusercontent.com | sh -s -- -b /usr/local/bin
 
       # PASSO 2.1: Geração do SBOM via Syft
@@ -52,24 +54,28 @@ jobs:
         run: |
           syft dir:. -o json=sbom.json
 
-      # GATE 2: Validação de conformidade estrutural e de licenças do SBOM
+      # GATE 2: Validação de conformidade estrutural e de licenças do SBOM gerado
       - name: Validate SBOM Compliance Fields
         run: |
           conftest test sbom.json --policy policies/sbom/ --namespace sbom_policy
 
-      # PASSO 2.2: Instalação direta e rápida do Trivy
-      - name: Install Trivy
+      # 3. Instalação nativa do Trivy usando o gerenciador de pacotes oficial (APT)
+      - name: Install Trivy (Native APT)
         run: |
-          echo "=== Instalando Trivy ==="
-          curl -sfL https://githubusercontent.com | sh -s -- -b /usr/local/bin v0.55.2
+          echo "=== Instalando Trivy via APT ==="
+          sudo apt-get update -y && sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+          wget -qO - https://github.io | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://github.io $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update -y && sudo apt-get install -y trivy
+          trivy --version
 
-      # PASSO 2.3: Escaneamento de vulnerabilidades no SBOM gerado
+      # PASSO 2.3: Escaneamento de vulnerabilidades diretamente no SBOM gerado pelo Syft
       - name: Scan SBOM for Real Vulnerabilities via Trivy
         continue-on-error: true
         run: |
           trivy sbom sbom.json --format table --severity HIGH,CRITICAL
 
-      # Publicação das evidências acadêmicas como artefato de download
+      # Publicação das evidências acadêmicas como artefato de download no GitHub
       - name: Archive Compliance SBOM Artifact
         if: always()
         uses: actions/upload-artifact@v4
