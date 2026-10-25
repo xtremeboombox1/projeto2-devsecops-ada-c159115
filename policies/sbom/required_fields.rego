@@ -5,6 +5,20 @@ import rego.v1
 # Definição dos campos fundamentais exigidos em cada artefato pelo plano de governança do curso
 required_artifact_fields := ["id", "name", "version", "type"]
 
+# Exceções de licença revisadas manualmente.
+# O Syft não extrai a licença destes pacotes (METADATA só traz o classifier),
+# mas a licença real foi verificada e é conhecida. A exceção vale apenas
+# para a versão exata listada.
+license_exceptions := {
+    {"name": "jinja2", "version": "3.1.6", "license": "BSD-3-Clause"},
+}
+
+is_license_excepted(artifact) if {
+    some exception in license_exceptions
+    exception.name == lower(artifact.name)
+    exception.version == artifact.version
+}
+
 # 1. Validação de Assinatura/Origem do Relatório
 deny contains msg if {
     not input.descriptor.name == "syft"
@@ -33,11 +47,15 @@ deny contains msg if {
 deny contains msg if {
     some artifact in input.artifacts
     artifact.type == "python"
-    
-    # Filtra e ignora componentes internos da biblioteca padrão (como o binário do interpretador)
+
+    # Ignora componentes internos da biblioteca padrão (como o binário do interpretador)
     not artifact.name == "Python"
-    
+
     # O Syft mapeia a ausência de licenças declaradas como uma lista vazia []
     count(artifact.licenses) == 0
+
+    # Ignora apenas pacotes com exceção aprovada (nome + versão)
+    not is_license_excepted(artifact)
+
     msg := sprintf("[SBOM LICENÇA] Alto Risco Legal: A dependência '%s' (versão %s) não possui informações de licença mapeadas.", [artifact.name, artifact.version])
 }
