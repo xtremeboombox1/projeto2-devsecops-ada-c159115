@@ -65,3 +65,5 @@ Os testes de security.rego atestaram a conformidade, porém em required_fields.r
 FAIL - sbom.json - sbom_policy - [SBOM LICENÇA] Alto Risco Legal: A dependência 'flask' (versão 2.2.2) não possui informações de licença mapeadas.
 FAIL - sbom.json - sbom_policy - [SBOM LICENÇA] Alto Risco Legal: A dependência 'werkzeug' (versão 2.2.2) não possui informações de licença mapeadas.
 ![alt text](image-5.png)
+- Dockerfile atualizado:
+![alt text](image-6.png)
