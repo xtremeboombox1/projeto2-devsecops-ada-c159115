@@ -27,13 +27,13 @@ jobs:
           conftest verify --policy policies/docker/ || echo "Sem testes locais ou políticas inconsistentes"
           conftest verify --policy policies/sbom/ || echo "Sem testes locais ou políticas inconsistentes"
 
-      # GATE 1: Dockerfile.secure
-      - name: Validate Dockerfile.secure Security
+      # GATE 1: Análise estática do Dockerfile contra as políticas de infraestrutura
+      - name: Validate Dockerfile Security
         run: |
-          if [ -f Dockerfile.secure ]; then
-            conftest test Dockerfile.secure --policy policies/docker/
+          if [ -f Dockerfile ]; then
+            conftest test Dockerfile --policy policies/docker/
           else
-            echo "Dockerfile.secure não encontrado na raiz. Pulando validação."
+            echo "Dockerfile não encontrado na raiz. Pulando validação."
           fi
 
       - name: Install Syft
