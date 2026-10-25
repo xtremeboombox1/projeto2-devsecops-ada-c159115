@@ -67,3 +67,6 @@ FAIL - sbom.json - sbom_policy - [SBOM LICENÇA] Alto Risco Legal: A dependênci
 ![alt text](image-5.png)
 - Dockerfile atualizado:
 ![alt text](image-6.png)
+- foi mapeada uma dependencia transitiva do Flask:
+![alt text](image-7.png)
+Será feito um debug para catalogar dependências transitivas para colocar como exceção para não travar os passos seguintes

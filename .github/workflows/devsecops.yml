@@ -47,6 +47,11 @@ jobs:
       - name: Generate Project SBOM via Syft
         run: syft lab-app:ci -o syft-json=sbom.json
 
+      - name: Debug licenses
+        run: |
+          jq '.artifacts[] | select(.type=="python") | {name, version, licenses}' sbom.json
+          docker run --rm --entrypoint sh lab-app:ci -c "pip show jinja2 | grep -i license"
+
       # GATE 2
       - name: Validate SBOM Compliance Fields
         run: |
