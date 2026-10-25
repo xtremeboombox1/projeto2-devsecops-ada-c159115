@@ -42,7 +42,7 @@ jobs:
           syft version
 
       - name: Build Docker image
-        run: docker build -t lab-app:ci
+        run: docker build -t lab-app:ci .
 
       - name: Generate Project SBOM via Syft
         run: syft lab-app:ci -o syft-json=sbom.json
