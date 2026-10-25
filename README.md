@@ -59,4 +59,9 @@ e na pipeline:
 ![alt text](image-2.png)
 evidencia da aplicação da policy .rego:
 ![alt text](image-3.png)
-- modificação no devsecops.yml para analisar as implementações de Dockerfile
+- Fazendo a mudança na nomeclatura do Dockerfile.secure para Dockerfile e mudando o nome do Dockerfile (inseguro) para Dockerfile.antigo, a esteira reconheceu o novo Dockerfile para analisar e tivemos esses retornos:
+![alt text](image-4.png)
+Os testes de security.rego atestaram a conformidade, porém em required_fields.rego houve a indicação de inconformidade de:
+FAIL - sbom.json - sbom_policy - [SBOM LICENÇA] Alto Risco Legal: A dependência 'flask' (versão 2.2.2) não possui informações de licença mapeadas.
+FAIL - sbom.json - sbom_policy - [SBOM LICENÇA] Alto Risco Legal: A dependência 'werkzeug' (versão 2.2.2) não possui informações de licença mapeadas.
+![alt text](image-5.png)
