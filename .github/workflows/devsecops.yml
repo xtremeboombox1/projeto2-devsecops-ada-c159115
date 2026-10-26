@@ -45,7 +45,7 @@ jobs:
         run: docker build -t lab-app:ci .
 
       - name: Generate Project SBOM via Syft
-        run: syft lab-app:ci -o syft-json=sbom.json
+        run: syft lab-app:ci -o syft-json=sbom.json -o cyclonedx-json=sbom-cdx.json
 
       - name: Debug licenses
         run: |
@@ -67,12 +67,14 @@ jobs:
       - name: Scan SBOM for Real Vulnerabilities via Trivy
         continue-on-error: true
         run: |
-          trivy sbom sbom.json --format table --severity HIGH,CRITICAL
+          trivy sbom sbom-cdx.json --format table --severity HIGH, CRITICAL --skip-version-check
 
       - name: Archive Compliance SBOM Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: compliant-project-sbom
-          path: sbom.json
+          path: |
+            sbom.json
+            sbom-cdx.json
           retention-days: 14

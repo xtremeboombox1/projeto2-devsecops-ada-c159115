@@ -70,3 +70,10 @@ FAIL - sbom.json - sbom_policy - [SBOM LICENÇA] Alto Risco Legal: A dependênci
 - foi mapeada uma dependencia transitiva do Flask:
 ![alt text](image-7.png)
 Será feito um debug para catalogar dependências transitivas para colocar como exceção para não travar os passos seguintes
+- No pipeline capturada essa dependencia transitiva:
+![alt text](image-8.png)
+Feito tratamento dessa exceção em required_fields.rego
+![alt text](image-9.png)
+- Feito um ajuste de checagem de versão do Trivy e geração de um segundo SBOM compatível para o Trivy interpretar, na saída da esteira tivemos `Detected SBOM format    format="unknown"
+FATAL ... SBOM decode error: unknown scanning is not yet supported`
+![alt text](image-10.png)
