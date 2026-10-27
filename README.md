@@ -77,3 +77,7 @@ Feito tratamento dessa exceção em required_fields.rego
 - Feito um ajuste de checagem de versão do Trivy e geração de um segundo SBOM compatível para o Trivy interpretar, na saída da esteira tivemos `Detected SBOM format    format="unknown"
 FATAL ... SBOM decode error: unknown scanning is not yet supported`
 ![alt text](image-10.png)
+- Nesse projeto python foi instalado via pip o pip-audit e abaixo temos apontamentos de vulnerabilidades desse projeto:
+![alt text](image-11.png)
+No pipeline também temos evidências de vulnerabilidades pelo sbom no formato cyclonedx
+![alt text](image-12.png)
