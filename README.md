@@ -81,3 +81,4 @@ FATAL ... SBOM decode error: unknown scanning is not yet supported`
 ![alt text](image-11.png)
 No pipeline também temos evidências de vulnerabilidades pelo sbom no formato cyclonedx
 ![alt text](image-12.png)
+- Atualização do script devsecops.yml para assinatura do cosign keyless, verificação da legitimidade da imagem, simulação de ataque com alteração da imagem docker e coleta de evidência no arquivo cosign-evidence.txt  
