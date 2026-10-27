@@ -81,4 +81,39 @@ FATAL ... SBOM decode error: unknown scanning is not yet supported`
 ![alt text](image-11.png)
 No pipeline também temos evidências de vulnerabilidades pelo sbom no formato cyclonedx
 ![alt text](image-12.png)
-- Atualização do script devsecops.yml para assinatura do cosign keyless, verificação da legitimidade da imagem, simulação de ataque com alteração da imagem docker e coleta de evidência no arquivo cosign-evidence.txt  
+- Atualização do script devsecops.yml para assinatura do cosign keyless, verificação da legitimidade da imagem, simulação de ataque com alteração da imagem docker e coleta de evidência no arquivo cosign-evidence.txt
+## Mapa de Ameaças
+
+Onde um atacante entraria na cadeia deste projeto e qual controle do curso bloqueia ou apenas evidencia o ataque.
+
+| # | Ponto de entrada | Ataque simulado ou possível | Controle | Efeito | Evidência no projeto |
+|---|---|---|---|---|---|
+| 1 | Dockerfile | Container rodando como root, tag `latest` | Rego + Conftest (`security.rego`) | **Bloqueia** | `Dockerfile.antigo` reprovado na pipeline; `Dockerfile` seguro aprovado |
+| 2 | Dependências Python | Pacote sem licença mapeada (risco legal e de procedência) | Policy de SBOM (`required_fields.rego`) | **Bloqueia** | FAIL de `flask` e `werkzeug` antes do ajuste |
+| 3 | Imagem base e bibliotecas | CVE conhecida explorável | Syft + Trivy | **Evidencia** | 4 CVEs HIGH em `util-linux 2.41.5-0+deb13u1` (Debian 13.7), sem correção disponível |
+| 4 | Registry | Imagem adulterada publicada no lugar da legítima | Cosign keyless (`cosign verify`) | **Bloqueia** na verificação | Imagem adulterada: `no signatures found` |
+| 5 | Origem do artefato | Imagem "legítima" construída fora da pipeline | Identidade do certificado (OIDC) + Rekor | **Evidencia** | Subject `devsecops.yml@refs/heads/main`, trigger `push`, `logIndex 3515269428` |
+| 6 | Dependência maliciosa | Código malicioso em pacote (caso xz-utils) | SBOM (Syft, CycloneDX) + attestation | **Evidencia** | `sbom.json`, `sbom-cdx.json` e attestation CycloneDX válida |
+| 7 | Pipeline de CI | Build comprometido (caso SolarWinds) | Assinatura atrelada ao workflow e ao commit | **Evidencia** | `githubWorkflowSha 0d8976dd…`, digest imutável |
+
+**Casos reais relacionados**
+- **SolarWinds (2020):** o build legítimo foi comprometido e o artefato adulterado saiu assinado. No projeto, a imagem adulterada (linha 4) é o análogo mais simples: um artefato diferente do original se passando por ele. O Cosign detecta quando a assinatura não existe, mas não protege contra um build comprometido que assina o próprio resultado. Por isso a identidade do workflow, o commit e o log de transparência são evidência importante (linhas 5 e 7).
+- **xz-utils (2024):** backdoor inserido em uma dependência por um mantenedor. Um SBOM não impede isso, mas permite responder rápido "estou usando essa versão?" (linha 6).
+
+**Riscos residuais**
+- As actions estão referenciadas por tag, não por SHA, e o Syft é instalado a partir da branch `main`.
+- A assinatura prova a origem da imagem, não a ausência de vulnerabilidades.
+
+---
+
+## Passo 4 — Compliance: que evidência eu teria se a cadeia fosse atacada amanhã?
+
+Se alguém questionasse amanhã se a imagem em produção é a que saiu da minha pipeline, eu teria evidências verificáveis de forma independente em três frentes.
+
+**1. Procedência (quem e como gerou).** A imagem publicada tem o digest imutável `sha256:d6084888b78e…f1f7`, assinado via Cosign keyless. A verificação (`cosign-evidence.txt`) confirma que o certificado foi emitido pelo GitHub Actions para o workflow `devsecops.yml` do repositório, na branch `main`, disparado por `push`, no commit `0d8976dd949183cb73ffcbc4972a0527606c0e76`. Como a assinatura está no log de transparência Rekor (`logIndex 3515269428`), ela tem registro público com data, que não depende de um arquivo meu e não pode ser alterado depois.
+
+**2. Composição (o que havia dentro).** O SBOM em CycloneDX (`sbom-cdx.json`) está anexado à imagem como attestation assinada, cuja verificação também passou, e uma cópia está versionada no repositório. Isso permite responder rapidamente se um componente afetado estava na imagem. O scan do Trivy sobre esse SBOM mostrou 4 CVEs HIGH em `util-linux 2.41.5-0+deb13u1` (CVE-2026-76642, CVE-2026-78408, CVE-2026-78409 e CVE-2026-78410), todas sem correção disponível, o que documenta o risco conhecido no momento do build.
+
+**3. Detecção de adulteração.** A simulação de ataque mostrou o comportamento esperado: uma imagem derivada da legítima, com backdoor e digest diferente (`sha256:cbba91517e6b…4010`), foi rejeitada com `no signatures found`. Em um incidente real, qualquer imagem em execução sem assinatura válida com a identidade do meu workflow seria tratada como suspeita.
+
+**Limitações.** As evidências provam origem e composição, não ausência de falhas. O Trivy ainda não bloqueia o build, e um build comprometido que assinasse o próprio resultado não seria barrado pela assinatura; nesse caso a evidência serviria para reconstruir o que aconteceu (qual workflow, qual commit, quando). Os artifacts da pipeline expiram em 14 dias, por isso as evidências principais (`cosign-evidence.txt` e `sbom-cdx.json`) foram versionadas no repositório.  

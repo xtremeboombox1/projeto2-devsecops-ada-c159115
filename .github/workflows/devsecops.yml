@@ -74,7 +74,7 @@ jobs:
           sudo apt-get update -y && sudo apt-get install -y trivy
 
       - name: Scan SBOM for Real Vulnerabilities via Trivy
-        continue-on-error: true
+        continue-on-error: false
         run: |
           trivy sbom sbom-cdx.json --format table --severity HIGH,CRITICAL --skip-version-check
 
