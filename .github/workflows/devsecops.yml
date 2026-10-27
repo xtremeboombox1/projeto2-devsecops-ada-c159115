@@ -67,7 +67,7 @@ jobs:
       - name: Scan SBOM for Real Vulnerabilities via Trivy
         continue-on-error: true
         run: |
-          trivy sbom sbom-cdx.json --format table --severity HIGH, CRITICAL --skip-version-check
+          trivy sbom sbom-cdx.json --format table --severity HIGH,CRITICAL --skip-version-check
 
       - name: Archive Compliance SBOM Artifact
         if: always()
